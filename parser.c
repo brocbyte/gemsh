@@ -1,69 +1,13 @@
 #include "shell.h"
-int tokensNum;
-token tokensTable[MAXARGS];
-job *first_job = NULL;
 
-static char *peakToken(char **pos);
-static char *readToken(char **pos);
-static job *parseJob(int *);
-static process *parseProcess(int *, char **infile, char **outfile, char **appfile);
-static char *blankskip(char *s);
-int isControlSymbol(char c);
+int initTokensTable(char *line);
+int tokensIsEmpty();
+token *tokensGetNextElement();
+token *tokensCheckNextElement();
+void tokensSkipElement();
 
-/**
- * returns num of tokens in line
-*/
-int initTokensTable(char *line)
-{
-    char *s = line;
-    int tokens = 0;
-    s = blankskip(s);
-    while (*s)
-    {
-        switch (*s)
-        {
-        case ';':
-            tokensTable[tokens++].type = SEMICOLON;
-            *s++ = 0;
-            break;
-        case '&':
-            tokensTable[tokens++].type = AMPERSAND;
-            *s++ = 0;
-            break;
-        case '>':
-            if (*(s + 1) == '>')
-            {
-                tokensTable[tokens++].type = REALLYRIGHTARROW;
-                *s = *(s + 1) = 0;
-                s += 2;
-            }
-            else
-            {
-                tokensTable[tokens++].type = RIGHTARROW;
-                *s++ = 0;
-            }
-            break;
-        case '<':
-            tokensTable[tokens++].type = LEFTARROW;
-            *s++ = 0;
-            break;
-        case '|':
-            tokensTable[tokens++].type = PIPE;
-            *s++ = 0;
-            break;
-        default:
-            /* это случай WORD */
-            tokensTable[tokens].place = s;
-            tokensTable[tokens++].type = WORD;
-            while (!isspace(*s) && !isControlSymbol(*s) && *s)
-                s++;
-            if (isspace(*s))
-                *s++ = 0;
-        }
-        s = blankskip(s);
-    }
-    return tokens;
-}
+static job *parseJob();
+static process *parseProcess(char **infile, char **outfile, char **appfile);
 
 
 
@@ -73,31 +17,55 @@ int isControlSymbol(char c)
 }
 
 /**
+ * ожидаемый ввод: job1 [&;] job2 [&;] ...
  * хэндлит '&', ';', т.к. это основной элемент для разделения заданий
  * договоренность: каждая функция должна "прочитывать" только те токены, которые она хэндлит
 */
 int parseline(char *line)
 {
-    tokensNum = initTokensTable(line);
-    int tokenIdx = 0;
+    int tokens = initTokensTable(line);
+    if (tokens == -1)
+        return 0;
 
-    first_job = parseJob(&tokenIdx);
-    job *currentJob = first_job;
-
-    while (tokenIdx < tokensNum && (tokensTable[tokenIdx].type == AMPERSAND || tokensTable[tokenIdx].type == SEMICOLON))
+    job *currentJob = first_job = 0;
+    /* условие окончания строки - отсутствие токенов */
+    while (!tokensIsEmpty())
     {
-        if (tokensTable[tokenIdx++].type == AMPERSAND)
+        token *t = tokensCheckNextElement();
+        switch (t->type)
         {
-            currentJob->foreground = 0;
+        case AMPERSAND:
+            if (currentJob)
+            {
+                currentJob->foreground = 0;
+                tokensSkipElement();
+            }
+            else
+            {
+                /* пытаемся сделать фоновым задание, которое по факту не существует */
+                fprintf(stderr, "syntax error\n");
+                return 0;
+            }
+            break;
+        case SEMICOLON:
+            tokensSkipElement();
+            break;
+        default:
+            if (currentJob)
+            {
+                currentJob->next = parseJob();
+                currentJob = currentJob->next;
+            }
+            else
+            {
+                /* это первое задание в строке */
+                first_job = currentJob = parseJob();
+            }
+            break;
         }
-        else
-        {
-            currentJob->foreground = 1;
-        }
-        currentJob->next = parseJob(&tokenIdx);
-        currentJob = currentJob->next;
     }
-    return tokensNum;
+
+    return tokens;
 }
 
 /**
@@ -105,61 +73,56 @@ int parseline(char *line)
  * хэндлит '|', т.к. это основной строительный эл-т для заданий
  * обрабатывает <> для первого и последнего процесса в трубе??
 */
-static job *parseJob(int *tokenIdx)
+static job *parseJob()
 {
     char *infile = 0, *outfile = 0, *appfile = 0;
     job *j = (job *)malloc(sizeof(job));
     j->next = 0;
-    j->first_process = parseProcess(tokenIdx, &infile, &outfile, &appfile);
-    j->in = STDIN_FILENO;
-    j->out = STDOUT_FILENO;
-    process *currentProcess = j->first_process;
+    j->appfile = j->infile = j->outfile = 0;
+    j->foreground = 1;
+    j->pgid = 0;
+    
+    process *currentProcess = j->first_process = 0;
 
-    while (tokensTable[*tokenIdx].type == PIPE)
+    token *t = tokensCheckNextElement();
+    /* условия окончания задания - токены ;& или отсутствие токенов */
+    while (!tokensIsEmpty() && t->type != AMPERSAND && t->type != SEMICOLON)
     {
-        outfile = appfile = 0;
-        (*tokenIdx)++;
-        currentProcess->next = parseProcess(tokenIdx, 0, &outfile, &appfile);
-        /**
-         * На самом деле в шелле можно так делать. 
-         * Если "ls | sort < 1.txt", то вход команды sort будет состоять из объединения ls и 1.txt/
-        */
-        if (tokensTable[(*tokenIdx) + 1].type == PIPE)
+        switch (t->type)
         {
-            /* получается что процесс не последний в пайпе, т.к. следующий токен - пайп */
-            if (appfile || outfile)
+        case PIPE:
+            if (currentProcess)
             {
-                fprintf(stderr, "Redirection stdout is allowed only for the last command in pipe\n");
+                /* переходим по трубе, процесс слева уже был */
+                tokensSkipElement();
+                /* справа от пайпа обязательно должен быть другой процесс */
+                if (!(!tokensIsEmpty() && t->type != AMPERSAND && t->type != SEMICOLON))
+                {
+                    fprintf(stderr, "syntax error\n");
+                    return j;
+                }
+                currentProcess->next = parseProcess(0, &outfile, &appfile);
+                currentProcess = currentProcess->next;
             }
+            else
+            {
+                fprintf(stderr, "syntax error\n");
+                return j;
+            }
+            break;
+        default:
+            /* это первый процесс */
+            currentProcess = j->first_process = parseProcess(&infile, &outfile, &appfile);
+            break;
         }
-        currentProcess = currentProcess->next;
+        t = tokensCheckNextElement();
     }
-    /* открываем файлы для перенаправления */
     if (infile)
-    {
-        if ((j->in = open(infile, O_RDONLY)) == -1)
-        {
-            perror(infile);
-            exit(1);
-        }
-    }
+        j->infile = infile;
     if (outfile)
-    {
-
-        if ((j->out = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
-        {
-            perror(outfile);
-            exit(1);
-        }
-    }
+        j->outfile = outfile;
     if (appfile)
-    {
-        if ((j->out = open(appfile, O_CREAT | O_APPEND | O_WRONLY, 0644)) == -1)
-        {
-            perror(appfile);
-            exit(1);
-        }
-    }
+        j->appfile = appfile;
     return j;
 }
 
@@ -167,54 +130,60 @@ static job *parseJob(int *tokenIdx)
  * ожидаемый вход: "arg0 arg1 ... argn [<,>,>>]"
  * если infile != 0, туда нужно положить <
  * аналогично для outfile, appfile.
- * если аргумент 0, но встречается перенправление его типа - syntax error
+ * если аргумент 0, но встречается перенаправление его типа - syntax error
 */
-static process *parseProcess(int *tokenIdx, char **infile, char **outfile, char **appfile)
+static process *parseProcess(char **infile, char **outfile, char **appfile)
 {
     process *p = (process *)malloc(sizeof(process));
     p->nargs = 0;
     p->next = 0;
     p->argv[0] = (char *)NULL;
 
-    p->argv[p->nargs++] = tokensTable[*tokenIdx].place;
-    p->argv[p->nargs] = (char *)NULL;
-
-    (*tokenIdx)++;
-    tokenType t = tokensTable[*tokenIdx].type;
-    while (t != SEMICOLON && t != AMPERSAND && t != PIPE && *tokenIdx < tokensNum)
+    token *t = tokensCheckNextElement();
+    while (!tokensIsEmpty() && t->type != SEMICOLON && t->type != AMPERSAND && t->type != PIPE)
     {
-        switch (t)
+        switch (t->type)
         {
         case REALLYRIGHTARROW:
             /* appfile */
-            (*tokenIdx)++;
-            *appfile = tokensTable[*tokenIdx].place;
+            tokensSkipElement();
+            t = tokensGetNextElement();
+            if (!t || t->type != WORD)
+            {
+                fprintf(stderr, "after >> should be filename\n");
+                return 0;
+            }
+            *appfile = t->place;
             break;
         case RIGHTARROW:
             /* outfile */
-            (*tokenIdx)++;
-            *outfile = tokensTable[*tokenIdx].place;
+            tokensSkipElement();
+            t = tokensGetNextElement();
+            if (!t || t->type != WORD)
+            {
+                fprintf(stderr, "after > should be filename\n");
+                return 0;
+            }
+            *outfile = t->place;
             break;
         case LEFTARROW:
             /* infile */
-            (*tokenIdx)++;
-            *infile = tokensTable[*tokenIdx].place;
+            tokensSkipElement();
+            t = tokensGetNextElement();
+            if (!t || t->type != WORD)
+            {
+                fprintf(stderr, "after < should be filename\n");
+                return 0;
+            }
+            *infile = t->place;
             break;
         default:
-            p->argv[p->nargs++] = tokensTable[*tokenIdx].place;
+            p->argv[p->nargs++] = t->place;
             p->argv[p->nargs] = (char *)NULL;
+            tokensSkipElement();
             break;
         }
-        (*tokenIdx)++;
-        t = tokensTable[*tokenIdx].type;
+        t = tokensCheckNextElement();
     }
     return p;
-}
-
-/* пропускает все значащие [\t, \n, _] символы */
-static char *blankskip(char *s)
-{
-    while (isspace(*s) && *s)
-        ++s;
-    return (s);
 }

@@ -1,28 +1,61 @@
 #include "shell.h"
 
-void launch_process(process *p, pid_t pgid, int infile, int outfile, int foreground)
+void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *appfile, int foreground)
 {
     pid_t pid;
+    pid = getpid();
+    /* если переданное pgid == 0, значит мы запускаем первый процесс в задании => для него pgid равен его pid'у */
+    if (pgid == 0)
+        pgid = pid;
+    setpgid(pid, pgid);
+    printf("child process, setting %d' pgid to %d\n", pid, pgid);
+    /* открываем файлы для перенаправления */
+    int infileno, outfileno;
 
-    if (infile != STDIN_FILENO)
+    if (infile)
     {
-        if (dup2(infile, 0) == -1)
+        if ((infileno = open(infile, O_RDONLY)) == -1)
+        {
+            perror(infile);
+            exit(1);
+        }
+        if (dup2(infileno, STDIN_FILENO) == -1)
         {
             perror("dup2");
             exit(1);
         }
-        close(infile);
+        close(infileno);
     }
 
-    if (outfile != STDOUT_FILENO)
+    if (outfile)
     {
-        if (dup2(outfile, 1) == -1)
+        if ((outfileno = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
+        {
+            perror(outfile);
+            exit(1);
+        }
+        if (dup2(outfileno, STDOUT_FILENO) == -1)
         {
             perror("dup2");
             exit(1);
         }
-        close(outfile);
+        close(outfileno);
     }
+    if (appfile)
+    {
+        if ((outfileno = open(appfile, O_CREAT | O_APPEND | O_WRONLY, 0644)) == -1)
+        {
+            perror(appfile);
+            exit(1);
+        }
+        if (dup2(outfileno, STDOUT_FILENO) == -1)
+        {
+            perror("dup2");
+            exit(1);
+        }
+        close(outfileno);
+    }
+
     execvp(p->argv[0], p->argv);
     perror(p->argv[0]);
     /* exec error */
@@ -33,15 +66,16 @@ void launch_job(job *j)
 {
     process *p;
     pid_t pid;
-    int infile, outfile;
+    char *infile, *outfile, *appfile;
     /* назначить вход для первой команды в пайпе */
-    infile = j->in;
+    infile = j->infile;
     for (p = j->first_process; p; p = p->next)
     {
         /* назначить выход для последней команды в пайпе */
         if (!p->next)
         {
-            outfile = j->out;
+            outfile = j->outfile;
+            appfile = j->appfile;
         }
         else
         {
@@ -58,17 +92,31 @@ void launch_job(job *j)
         else if (pid == 0)
         {
             /* child process */
-            launch_process(p, j->pgid, infile, outfile, j->foreground);
+            launch_process(p, j->pgid, infile, outfile, appfile, j->foreground);
         }
         else
         {
             /* parent process */
             p->pid = pid;
+            /* назначим pgid как pid первого процесса в группе */
+            if (!j->pgid)
+                j->pgid = pid;
+            /* назначаем потомку группу */
+            setpgid(pid, j->pgid);
+            printf("parent process, setting %d' pgid to %d\n", pid, j->pgid);
+
             int status;
-            if (waitpid(pid, &status, 0) == -1)
+            if (j->foreground)
             {
-                perror("Wait error!");
-                exit(1);
+                if (waitpid(pid, &status, 0) == -1)
+                {
+                    perror("Wait error!");
+                    exit(1);
+                }
+            }
+            else
+            {
+                printf("%d\n", pid);
             }
         }
         /* здесь будет пайп */
@@ -76,11 +124,6 @@ void launch_job(job *j)
     }
     /*В этой реализации мы ждем все процессы. 
     * Поэтому к этому моменту мы уверены, что все процессы завершены.
-    * По-хорошему надо будет смотреть, какие задания завершены, чистить за ними структуры процессов + структуры заданий,
-    * освобождать ручки файлов.
+    * По-хорошему надо будет смотреть, какие задания завершены, чистить за ними структуры процессов + структуры заданий.
     */
-    if (j->in != STDIN_FILENO)
-        close(j->in);
-    if (j->out != STDOUT_FILENO)
-        close(j->out);
 }

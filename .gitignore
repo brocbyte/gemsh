@@ -3,6 +3,8 @@
 !*.*
 /.vscode
 
+*.txt
+
 # Prerequisites
 *.d
 

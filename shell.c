@@ -1,8 +1,17 @@
 #include "shell.h"
 
+job *first_job = NULL;
+
 int main()
 {
-    int i;
+    /* TODO проверить, нужные ли здесь сигналы */
+    signal(SIGINT, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGTTIN, SIG_IGN);
+    signal(SIGTTOU, SIG_IGN);
+    signal(SIGCHLD, SIG_IGN);
+    
     char line[MAXLINELEN]; /*  allow large command lines  */
     int njobs;
     char prompt[50]; // строка-приглашение на ввод
@@ -20,7 +29,7 @@ int main()
             for (j = first_job; j; j = j->next)
             {
                 printf("new job{\n");
-                printf("\tstdin: %d, stdout: %d\n", j->in, j->out);
+                printf("\tinfile: %s, outfile: %s, appfile: %s\n", j->infile, j->outfile, j->appfile);
                 process *p;
                 for (p = j->first_process; p; p = p->next)
                 {
@@ -36,8 +45,15 @@ int main()
 
         /* запускаем задания */
         job *j;
-        for (j = first_job; j; j = j->next){
+        for (j = first_job; j; j = j->next)
+        {
             launch_job(j);
+        }
+        /* тупое подбирание завершившихся процессов. По-нормальному, надо делать job control и внутри него проверять, закончились ли задания */
+        int r = waitpid(-1, (int *)0, WNOHANG);
+        while (r > 0)
+        {
+            r = waitpid(-1, (int *)0, WNOHANG);
         }
     }
     return 0;

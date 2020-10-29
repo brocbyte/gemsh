@@ -3,15 +3,6 @@
 #include <string.h>
 #include "shell.h"
 
-/* Читает строку из стандартного ввода. 
- * параметры:
- * char *prompt - строка-приглашение
- * char *line - буфер куда будет читаться строка
- * int sizline - размер буфера
- * return:
- * n - сколько прочитано байт из ручки_0
-*/
-
 int promptline(char *prompt, char *line, int sizline)
 {
     int n = 0;

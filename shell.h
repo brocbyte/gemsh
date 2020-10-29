@@ -13,32 +13,29 @@
 #define MAXARGS 256
 #define MAXCMDS 50
 #define MAXLINELEN 1024
-#define DEBUG
-
-
+//#define DEBUG
 
 /* A process is a single process.  */
 typedef struct process
 {
     struct process *next; /* next process in pipeline */
     int nargs;
-    char *argv[500]; /* for exec */
-    pid_t pid;       /* process ID */
-    char completed;  /* 1 if process has completed */
-    char stopped;    /* 1 if process has stopped */
-    int status;      /* reported status value */
+    char *argv[MAXARGS]; /* for exec */
+    pid_t pid;           /* process ID */
+    char completed;      /* 1 if process has completed */
+    char stopped;        /* 1 if process has stopped */
+    int status;          /* reported status value */
 } process;
 
 /* A job is a pipeline of processes.  */
 typedef struct job
 {
-    struct job *next;       /* next active job */
-    char *command;          /* command line, used for messages */
-    process *first_process; /* list of processes in this job */
-    pid_t pgid;             /* process group ID */
-    char notified;          /* true if user told about stopped job */
-    int in, out;            /* standard i/o channels */
-    /* foreground нужен здесь, или лучше передавать в параметре launch_job? */
+    struct job *next;                 /* next active job */
+    char *command;                    /* command line, used for messages */
+    process *first_process;           /* list of processes in this job */
+    pid_t pgid;                       /* process group ID */
+    char notified;                    /* true if user told about stopped job */
+    char *infile, *outfile, *appfile; /* standard i/o channels */
     char foreground;
 } job;
 
@@ -48,13 +45,12 @@ extern job *first_job;
 typedef enum tokenType
 {
     WORD,
-    AMPERSAND,
-    COMMA,
-    SEMICOLON,
-    LEFTARROW,
-    RIGHTARROW,
-    REALLYRIGHTARROW,
-    PIPE
+    AMPERSAND,        /* '&' */
+    SEMICOLON,        /* ';' */
+    LEFTARROW,        /* '<' */
+    RIGHTARROW,       /* '>' */
+    REALLYRIGHTARROW, /* '>>' */
+    PIPE              /* '|' */
 } tokenType;
 
 typedef struct token
@@ -63,7 +59,6 @@ typedef struct token
     tokenType type;
 } token;
 
-extern token tokensTable[MAXARGS];
 
 int parseline(char *);
 int promptline(char *, char *, int);
