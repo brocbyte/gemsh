@@ -5,12 +5,12 @@ job *first_job = NULL;
 int main()
 {
     /* TODO проверить, нужные ли здесь сигналы */
-    signal(SIGINT, SIG_IGN);
+    /* signal(SIGINT, SIG_IGN);
     signal(SIGQUIT, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
     signal(SIGTTOU, SIG_IGN);
-    signal(SIGCHLD, SIG_IGN);
+    signal(SIGCHLD, SIG_IGN); */
     
     char line[MAXLINELEN]; /*  allow large command lines  */
     int njobs;

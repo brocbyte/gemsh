@@ -7,8 +7,9 @@ void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *a
     /* если переданное pgid == 0, значит мы запускаем первый процесс в задании => для него pgid равен его pid'у */
     if (pgid == 0)
         pgid = pid;
+    /* назначем потомку группу из потомка */
     setpgid(pid, pgid);
-    printf("child process, setting %d' pgid to %d\n", pid, pgid);
+    
     /* открываем файлы для перенаправления */
     int infileno, outfileno;
 
@@ -96,14 +97,14 @@ void launch_job(job *j)
         }
         else
         {
-            /* parent process */
+            /* parent process code */
             p->pid = pid;
-            /* назначим pgid как pid первого процесса в группе */
+            /* pgid для задания равен как первого процесса в конвейере */
             if (!j->pgid)
                 j->pgid = pid;
-            /* назначаем потомку группу */
+            /* назначаем потомку группу из шелла */
+            /* If both the child processes and the shell call setpgid, this ensures that the right things happen no matter which process gets to it first. */
             setpgid(pid, j->pgid);
-            printf("parent process, setting %d' pgid to %d\n", pid, j->pgid);
 
             int status;
             if (j->foreground)
