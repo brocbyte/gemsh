@@ -42,6 +42,8 @@ typedef struct job
 /* голова списка заданий */
 extern job *first_job;
 
+extern pid_t shell_pgid;
+
 typedef enum tokenType
 {
     WORD,

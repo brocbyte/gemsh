@@ -1,18 +1,42 @@
 #include "shell.h"
 
+void putJobInForeground(job *j, int cont);
+void putJobInBackground(job *j, int cont);
+
 void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *appfile, int foreground)
 {
+    /* устанавливаем процессу группу
+     * если переданное pgid == 0, значит мы запускаем первый процесс в задании => для него pgid равен его pid'у 
+     * фактически это значит, что первый процесс в задании будет лидером группы процессов */
     pid_t pid;
     pid = getpid();
-    /* если переданное pgid == 0, значит мы запускаем первый процесс в задании => для него pgid равен его pid'у */
     if (pgid == 0)
         pgid = pid;
-    /* назначем потомку группу из потомка */
+
+    /* назначем потомку группу из потомка (так же делаем и в шелле, чтобы избежать гонок) */
     setpgid(pid, pgid);
-    
+
+    /* восстанавливаем стандартные реакции на сигналы (т.к. мы наследовались от шелла) */
+    signal(SIGINT, SIG_DFL);
+    signal(SIGQUIT, SIG_DFL);
+    signal(SIGTSTP, SIG_DFL);
+    signal(SIGTTIN, SIG_DFL);
+    signal(SIGTTOU, SIG_DFL);
+
+    if (foreground)
+    {
+        /* выводим процесс на передний план */
+        tcsetpgrp(STDIN_FILENO, pgid);
+    }
+    else
+    {
+        /* если фоновый, надо предохранить от SIGINT,SIGQUIT */
+        signal(SIGINT, SIG_IGN);
+        signal(SIGQUIT, SIG_IGN);
+    }
+
     /* открываем файлы для перенаправления */
     int infileno, outfileno;
-
     if (infile)
     {
         if ((infileno = open(infile, O_RDONLY)) == -1)
@@ -27,7 +51,6 @@ void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *a
         }
         close(infileno);
     }
-
     if (outfile)
     {
         if ((outfileno = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
@@ -57,6 +80,7 @@ void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *a
         close(outfileno);
     }
 
+    /* наконец, зовем exec по аргументам p->argv */
     execvp(p->argv[0], p->argv);
     perror(p->argv[0]);
     /* exec error */
@@ -105,26 +129,38 @@ void launch_job(job *j)
             /* назначаем потомку группу из шелла */
             /* If both the child processes and the shell call setpgid, this ensures that the right things happen no matter which process gets to it first. */
             setpgid(pid, j->pgid);
-
-            int status;
-            if (j->foreground)
-            {
-                if (waitpid(pid, &status, 0) == -1)
-                {
-                    perror("Wait error!");
-                    exit(1);
-                }
-            }
-            else
-            {
-                printf("%d\n", pid);
-            }
         }
         /* здесь будет пайп */
         infile = 0;
+    }
+    if (j->foreground)
+    {
+        putJobInForeground(j, 0);
+    }
+    else
+    {
+        printf("launched: %d\n", j->pgid);
+        putJobInBackground(j, 0);
     }
     /*В этой реализации мы ждем все процессы. 
     * Поэтому к этому моменту мы уверены, что все процессы завершены.
     * По-хорошему надо будет смотреть, какие задания завершены, чистить за ними структуры процессов + структуры заданий.
     */
+}
+
+void putJobInForeground(job *j, int cont)
+{
+    /* cont - для job control */
+    tcsetpgrp(STDIN_FILENO, j->pgid);
+    if (waitpid(j->first_process->pid, 0, 0) == -1)
+    {
+        perror("Wait error!");
+        exit(1);
+    }
+    tcsetpgrp(STDIN_FILENO, shell_pgid);
+}
+void putJobInBackground(job *j, int cont)
+{
+    /* cont - для job control */
+    return;
 }
