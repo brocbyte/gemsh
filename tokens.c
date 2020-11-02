@@ -1,8 +1,8 @@
 #include "shell.h"
 int isControlSymbol(char c);
-int tokensNum;
-token tokensTable[MAXARGS];
-int tokenIdx;
+static int tokensNum;
+static token tokensTable[MAXARGS];
+static int tokenIdx;
 /* пропускает все значащие [\t, \n, _] символы */
 static char *blankskip(char *s)
 {
@@ -53,8 +53,8 @@ int initTokensTable(char *line)
             fprintf(stderr, "you can't use pipes for now :)\n");
             return -1;
             /* tmp, пока не сделаны трубы */
-            tokensTable[tokensNum++].type = PIPE;
-            *s++ = 0;
+            /* tokensTable[tokensNum++].type = PIPE;
+            *s++ = 0; */
             break;
         default:
             /* это случай WORD */
