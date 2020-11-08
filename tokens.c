@@ -6,8 +6,10 @@ static int tokenIdx;
 /* пропускает все значащие [\t, \n, _] символы */
 static char *blankskip(char *s)
 {
-    while (isspace(*s) && *s)
+    while (isspace(*s) && *s){
+        //*s = 0;
         ++s;
+    }
     return (s);
 }
 /**

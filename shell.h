@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-
+#include <termios.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -36,7 +37,10 @@ typedef struct job
     pid_t pgid;                       /* process group ID */
     char notified;                    /* true if user told about stopped job */
     char *infile, *outfile, *appfile; /* standard i/o channels */
+    struct termios tmodes;            /* saved terminal modes */
     char foreground;
+    char launched;
+    char builtin;
 } job;
 
 /* голова списка заданий */

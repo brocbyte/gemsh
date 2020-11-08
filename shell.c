@@ -1,9 +1,9 @@
 #include "shell.h"
-
+#include "jobcontrol.h"
 job *first_job = NULL;
 
 pid_t shell_pgid;
-
+void jobs_info(job *j);
 int main()
 {
     shell_pgid = getpgrp();
@@ -18,11 +18,13 @@ int main()
     int njobs;
     char prompt[50]; // строка-приглашение на ввод
 
+    char tmp_line[MAXLINELEN];
     sprintf(prompt, "<> ");
 
-    while (promptline(prompt, line, sizeof(line)) > 0)
+    while (promptline(prompt, tmp_line, sizeof(tmp_line)) > 0)
     {
-        //tcsetpgrp (0, shell_pgid);
+        do_job_notification();
+        strncpy(line, tmp_line, sizeof(line));
         if ((njobs = parseline(line)) <= 0)
             continue;
 
@@ -30,12 +32,12 @@ int main()
         job *j;
         for (j = first_job; j; j = j->next)
         {
-            launch_job(j);
+            if (!j->launched)
+                launch_job(j);
         }
 #ifdef DEBUG
         {
-            printf("shell_pgid: %d\n", shell_pgid);
-            job *j;
+            /* job *j;
             for (j = first_job; j; j = j->next)
             {
                 printf("new job{\n");
@@ -51,15 +53,10 @@ int main()
                     printf("\t}\n");
                 }
                 printf("\n}\n");
-            }
+            } */
+            jobs_info();
         }
 #endif
-        /* тупое подбирание завершившихся процессов. По-нормальному, надо делать job control и внутри него проверять, закончились ли задания */
-        int r = waitpid(-1, (int *)0, WNOHANG);
-        while (r > 0)
-        {
-            r = waitpid(-1, (int *)0, WNOHANG);
-        }
     }
     return 0;
 }

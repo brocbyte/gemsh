@@ -9,8 +9,6 @@ void tokensSkipElement();
 static job *parseJob();
 static process *parseProcess(char **infile, char **outfile, char **appfile);
 
-
-
 int isControlSymbol(char c)
 {
     return (c == '|' || c == ';' || c == '&' || c == '>' || c == '<');
@@ -27,7 +25,10 @@ int parseline(char *line)
     if (tokens == -1)
         return 0;
 
-    job *currentJob = first_job = 0;
+    job *currentJob;
+    for (currentJob = first_job; currentJob && currentJob->next; currentJob = currentJob->next)
+        ;
+
     /* условие окончания строки - отсутствие токенов */
     while (!tokensIsEmpty())
     {
@@ -51,15 +52,14 @@ int parseline(char *line)
             tokensSkipElement();
             break;
         default:
-            if (currentJob)
+            if (!currentJob)
             {
-                currentJob->next = parseJob();
-                currentJob = currentJob->next;
+                first_job = currentJob = parseJob();
             }
             else
             {
-                /* это первое задание в строке */
-                first_job = currentJob = parseJob();
+                currentJob->next = parseJob();
+                currentJob = currentJob->next;
             }
             break;
         }
@@ -81,7 +81,11 @@ static job *parseJob()
     j->appfile = j->infile = j->outfile = 0;
     j->foreground = 1;
     j->pgid = 0;
-    
+    j->launched = 0;
+    j->notified = 0;
+    j->command = 0;
+    j->builtin = 0;
+    /* tmodes??? */
     process *currentProcess = j->first_process = 0;
 
     token *t = tokensCheckNextElement();
@@ -113,6 +117,12 @@ static job *parseJob()
         default:
             /* это первый процесс */
             currentProcess = j->first_process = parseProcess(&infile, &outfile, &appfile);
+            if (strcmp(j->first_process->argv[0], "jobs") == 0 ||
+                strcmp(j->first_process->argv[0], "fg") == 0 ||
+                strcmp(j->first_process->argv[0], "bg") == 0)
+            {
+                j->builtin = 1;
+            }
             break;
         }
         t = tokensCheckNextElement();
@@ -138,7 +148,8 @@ static process *parseProcess(char **infile, char **outfile, char **appfile)
     p->nargs = 0;
     p->next = 0;
     p->argv[0] = (char *)NULL;
-
+    p->completed = 0;
+    p->stopped = 0;
     token *t = tokensCheckNextElement();
     while (!tokensIsEmpty() && t->type != SEMICOLON && t->type != AMPERSAND && t->type != PIPE)
     {

@@ -1,7 +1,8 @@
 #include "shell.h"
-
-void putJobInForeground(job *j, int cont);
-void putJobInBackground(job *j, int cont);
+#include "jobcontrol.h"
+void jobs_info();
+void fg_builtin(process *p);
+void bg_builtin(process *p);
 
 void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *appfile, int foreground)
 {
@@ -10,6 +11,7 @@ void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *a
      * фактически это значит, что первый процесс в задании будет лидером группы процессов */
     pid_t pid;
     pid = getpid();
+    p->pid = pid;
     if (pgid == 0)
         pgid = pid;
 
@@ -28,12 +30,12 @@ void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *a
         /* выводим процесс на передний план */
         tcsetpgrp(STDIN_FILENO, pgid);
     }
-    else
+    /* else
     {
-        /* если фоновый, надо предохранить от SIGINT,SIGQUIT */
+        если фоновый, надо предохранить от SIGINT,SIGQUIT 
         signal(SIGINT, SIG_IGN);
         signal(SIGQUIT, SIG_IGN);
-    }
+    } */
 
     /* открываем файлы для перенаправления */
     int infileno, outfileno;
@@ -96,6 +98,24 @@ void launch_job(job *j)
     infile = j->infile;
     for (p = j->first_process; p; p = p->next)
     {
+        if (strcmp(p->argv[0], "jobs") == 0)
+        {
+            jobs_info();
+            p->completed = 1;
+            return;
+        }
+        if (strcmp(p->argv[0], "fg") == 0)
+        {
+            fg_builtin(p);
+            p->completed = 1;
+            return;
+        }
+        if (strcmp(p->argv[0], "bg") == 0)
+        {
+            bg_builtin(p);
+            p->completed = 1;
+            return;
+        }
         /* назначить выход для последней команды в пайпе */
         if (!p->next)
         {
@@ -133,34 +153,18 @@ void launch_job(job *j)
         /* здесь будет пайп */
         infile = 0;
     }
+    j->launched = 1;
     if (j->foreground)
     {
-        putJobInForeground(j, 0);
+        put_job_in_foreground(j, 0);
     }
     else
     {
         printf("launched: %d\n", j->pgid);
-        putJobInBackground(j, 0);
+        put_job_in_background(j, 0);
     }
     /*В этой реализации мы ждем все процессы. 
     * Поэтому к этому моменту мы уверены, что все процессы завершены.
     * По-хорошему надо будет смотреть, какие задания завершены, чистить за ними структуры процессов + структуры заданий.
     */
-}
-
-void putJobInForeground(job *j, int cont)
-{
-    /* cont - для job control */
-    tcsetpgrp(STDIN_FILENO, j->pgid);
-    if (waitpid(j->first_process->pid, 0, 0) == -1)
-    {
-        perror("Wait error!");
-        exit(1);
-    }
-    tcsetpgrp(STDIN_FILENO, shell_pgid);
-}
-void putJobInBackground(job *j, int cont)
-{
-    /* cont - для job control */
-    return;
 }
