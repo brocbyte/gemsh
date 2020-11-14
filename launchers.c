@@ -4,7 +4,7 @@ void jobs_info();
 void fg_builtin(process *p);
 void bg_builtin(process *p);
 
-void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *appfile, int foreground)
+void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile, int foreground)
 {
     /* устанавливаем процессу группу
      * если переданное pgid == 0, значит мы запускаем первый процесс в задании => для него pgid равен его pid'у 
@@ -37,8 +37,7 @@ void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *a
         signal(SIGQUIT, SIG_IGN);
     } */
 
-    /* открываем файлы для перенаправления */
-    int infileno, outfileno;
+    /* int infileno, outfileno;
     if (infile)
     {
         if ((infileno = open(infile, O_RDONLY)) == -1)
@@ -80,6 +79,23 @@ void launch_process(process *p, pid_t pgid, char *infile, char *outfile, char *a
             exit(1);
         }
         close(outfileno);
+    } */
+
+    /* открываем файлы для перенаправления */
+    if (infile != STDIN_FILENO)
+    {
+        dup2(infile, STDIN_FILENO);
+        close(infile);
+    }
+    if (outfile != STDOUT_FILENO)
+    {
+        dup2(outfile, STDOUT_FILENO);
+        close(outfile);
+    }
+    if (errfile != STDERR_FILENO)
+    {
+        dup2(errfile, STDERR_FILENO);
+        close(errfile);
     }
 
     /* наконец, зовем exec по аргументам p->argv */
@@ -93,9 +109,10 @@ void launch_job(job *j)
 {
     process *p;
     pid_t pid;
-    char *infile, *outfile, *appfile;
+    int mypipe[2], infile, outfile;
+    //char *infile, *outfile, *appfile;
     /* назначить вход для первой команды в пайпе */
-    infile = j->infile;
+    infile = j->stdin;
     for (p = j->first_process; p; p = p->next)
     {
         if (strcmp(p->argv[0], "jobs") == 0)
@@ -117,14 +134,18 @@ void launch_job(job *j)
             return;
         }
         /* назначить выход для последней команды в пайпе */
-        if (!p->next)
+        if (p->next)
         {
-            outfile = j->outfile;
-            appfile = j->appfile;
+            if (pipe(mypipe) < 0)
+            {
+                perror("pipe");
+                exit(1);
+            }
+            outfile = mypipe[1];
         }
         else
         {
-            /* здесь будет пайп */
+            outfile = j->stdout;
         }
 
         pid = fork();
@@ -137,22 +158,34 @@ void launch_job(job *j)
         else if (pid == 0)
         {
             /* child process */
-            launch_process(p, j->pgid, infile, outfile, appfile, j->foreground);
+            launch_process(p, j->pgid, infile, outfile, j->stderr, j->foreground);
         }
         else
         {
             /* parent process code */
             p->pid = pid;
-            /* pgid для задания равен как первого процесса в конвейере */
+            /* pgid для задания равен pid первого процесса в конвейере */
             if (!j->pgid)
                 j->pgid = pid;
             /* назначаем потомку группу из шелла */
             /* If both the child processes and the shell call setpgid, this ensures that the right things happen no matter which process gets to it first. */
             setpgid(pid, j->pgid);
         }
-        /* здесь будет пайп */
-        infile = 0;
+        /* Clean up after pipes.  */
+        if (infile != j->stdin)
+            close(infile);
+        if (outfile != j->stdout)
+            close(outfile);
+        infile = mypipe[0];
     }
+    /* кажется надо почистить открытые шеллом файлы */
+    if (j->stdin != STDIN_FILENO)
+        close(j->stdin);
+    if (j->stdout != STDOUT_FILENO)
+        close(j->stdout);
+    if (j->stderr != STDERR_FILENO)
+        close(j->stderr);
+
     j->launched = 1;
     if (j->foreground)
     {

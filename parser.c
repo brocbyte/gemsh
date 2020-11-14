@@ -78,7 +78,9 @@ static job *parseJob()
     char *infile = 0, *outfile = 0, *appfile = 0;
     job *j = (job *)malloc(sizeof(job));
     j->next = 0;
-    j->appfile = j->infile = j->outfile = 0;
+    j->stdin = STDIN_FILENO;
+    j->stdout = STDOUT_FILENO;
+    j->stderr = STDERR_FILENO;
     j->foreground = 1;
     j->pgid = 0;
     j->launched = 0;
@@ -105,7 +107,8 @@ static job *parseJob()
                     fprintf(stderr, "syntax error\n");
                     return j;
                 }
-                currentProcess->next = parseProcess(0, &outfile, &appfile);
+                // currentProcess->next = parseProcess(0, &outfile, &appfile);
+                currentProcess->next = parseProcess(&infile, &outfile, &appfile);
                 currentProcess = currentProcess->next;
             }
             else
@@ -127,12 +130,32 @@ static job *parseJob()
         }
         t = tokensCheckNextElement();
     }
+    /* здесь мы внезапно открываем файлы. логика конечно не ахти, но лучшего места пока не нашлось.
+       по контракту мы договорились хранить в задании ручки файлов. */
     if (infile)
-        j->infile = infile;
+    {
+        if ((j->stdin = open(infile, O_RDONLY)) == -1)
+        {
+            perror(infile);
+            exit(1);
+        }
+    }
     if (outfile)
-        j->outfile = outfile;
-    if (appfile)
-        j->appfile = appfile;
+    {
+        if ((j->stdout = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
+        {
+            perror(outfile);
+            exit(1);
+        }
+    }
+    else if (appfile)
+    {
+        if ((j->stdout = open(appfile, O_CREAT | O_APPEND | O_WRONLY, 0644)) == -1)
+        {
+            perror(appfile);
+            exit(1);
+        }
+    }
     return j;
 }
 

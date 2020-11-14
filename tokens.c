@@ -52,11 +52,11 @@ int initTokensTable(char *line)
             break;
         case '|':
             /* tmp, пока не сделаны трубы */
-            fprintf(stderr, "you can't use pipes for now :)\n");
-            return -1;
+            /* fprintf(stderr, "you can't use pipes for now :)\n");
+            return -1; */
             /* tmp, пока не сделаны трубы */
-            /* tokensTable[tokensNum++].type = PIPE;
-            *s++ = 0; */
+            tokensTable[tokensNum++].type = PIPE;
+            *s++ = 0;
             break;
         default:
             /* это случай WORD */

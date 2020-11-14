@@ -39,12 +39,12 @@ int main()
         }
 #ifdef DEBUG
         {
-            /* job *j;
+            job *j;
             for (j = first_job; j; j = j->next)
             {
                 printf("new job{\n");
                 printf("\tjob->pgid: %d\n", j->pgid);
-                printf("\tinfile: %s, outfile: %s, appfile: %s\n", j->infile, j->outfile, j->appfile);
+                printf("\tstdin: %d, stdout: %d, stderr: %d\n", j->stdin, j->stdout, j->stderr);
                 process *p;
                 for (p = j->first_process; p; p = p->next)
                 {
@@ -55,8 +55,7 @@ int main()
                     printf("\t}\n");
                 }
                 printf("\n}\n");
-            } */
-            jobs_info();
+            }
         }
 #endif
         do_job_notification();
