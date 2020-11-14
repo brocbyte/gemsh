@@ -1,0 +1,33 @@
+jobs
+fg
+bg
+sleep 1000 & // x_id
+sleep 111
+ctrl+z
+jobs
+fg x_id
+ctrl+c
+jobs
+bg // d_id
+jobs
+kill -9 d_id !!!
+sleep 500 & sleep 400 & sleep 10 & // a_id, b_id, c_id
+fg // c_id
+ctrl+c
+kill -9 a_id ; kill -9 b_id
+sleep 200 ; sleep 1000 & // m_id
+ctrl+z // n_id
+bg
+
+///
+jobs
+sleep 100 & // x_id
+kill -9 x_id
+
+
+date & fg ; jobs
+sleep 3 & sleep 3
+date ; man man ; jobs ; date &
+sleep 10 ; bg ; sleep 100 & date
+man man ; bg ; date & man man
+man man ; jobs ; sleep 100 & fg

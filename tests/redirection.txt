@@ -1,0 +1,28 @@
+date
+date > 1.txt
+cat 1.txt
+date >> 1.txt
+cat 1.txt
+sort < shell.c & date >> 1.txt
+sleep 10 & sleep 1 ; sleep 10 & sleep 1 ; sleep 10 & sleep 1 ;sleep 10 & sleep 1 ;sleep 10 & sleep 1 ;
+
+<1.txt sort > 2.txt --reverse
+>>1.txt >>2.txt sort < 1.txt // берет содержимое 1.txt, сортирует и добавляет в 2.txt
+&
+;;;;;;;;;;
+;;;;;;;;;date
+
+
+echo meow > meow.txt;\
+cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
+cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
+cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
+cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
+cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
+cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
+cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
+cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
+cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
+cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
+wc --lines meow.txt > cat.txt ; echo Number of cats: ;\
+cat cat.txt ; rm cat.txt ; rm tmp.txt
