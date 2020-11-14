@@ -27,15 +27,15 @@ void continue_job(job *j, int foreground)
 void jobs_info()
 {
     job *j;
-    //update_status();
     for (j = first_job; j; j = j->next)
     {
         if (j->builtin || !j->launched)
             continue;
-        printf("[%d]: ", j->pgid);
+        printf("# [%d]: ", j->pgid);
         if (job_is_stopped(j) && !job_is_completed(j))
         {
             printf("stopped\n");
+            j->notified = 1;
         }
         else if (!job_is_completed(j))
         {
@@ -44,6 +44,7 @@ void jobs_info()
         else
         {
             printf("completed\n");
+            j->notified = 1;
         }
     }
 }

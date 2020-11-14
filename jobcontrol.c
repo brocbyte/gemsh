@@ -5,7 +5,6 @@ int mark_process_status(pid_t pid, int status)
 {
     job *j;
     process *p;
-    //fprintf(stderr, "mark proc status %d\n", pid);
     if (pid > 0)
     {
         /* Update the record for the process.  */
@@ -17,11 +16,9 @@ int mark_process_status(pid_t pid, int status)
                     if (WIFSTOPPED(status))
                     {
                         p->stopped = 1;
-                        //fprintf(stderr, "looks like %d stopped\n", pid);
                     }
                     else
                     {
-                        //fprintf(stderr, "looks like %d completed\n", pid);
                         p->completed = 1;
                         if (WIFSIGNALED(status))
                             fprintf(stderr, "\n[%d]: terminated by signal %d.\n", (int)pid, WTERMSIG(p->status));
@@ -93,7 +90,7 @@ void do_job_notification()
          completed and delete it from the list of active jobs.  */
         if (job_is_completed(j))
         {
-            if (!j->foreground)
+            if (!j->foreground && !j->notified)
                 reportJob(j, "completed");
             if (jlast)
                 jlast->next = jnext;

@@ -1,5 +1,5 @@
 /.vscode
-
+*.cpp
 *.txt
 
 # Prerequisites

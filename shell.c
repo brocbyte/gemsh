@@ -23,10 +23,12 @@ int main()
 
     while (promptline(prompt, tmp_line, sizeof(tmp_line)) > 0)
     {
-        do_job_notification();
+        update_status();
         strncpy(line, tmp_line, sizeof(line));
-        if ((njobs = parseline(line)) <= 0)
+        if ((njobs = parseline(line)) <= 0){
+            do_job_notification();
             continue;
+        }
 
         /* запускаем задания */
         job *j;
@@ -57,6 +59,7 @@ int main()
             jobs_info();
         }
 #endif
+        do_job_notification();
     }
     return 0;
 }
