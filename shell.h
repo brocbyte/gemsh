@@ -56,7 +56,8 @@ typedef enum tokenType
     LEFTARROW,        /* '<' */
     RIGHTARROW,       /* '>' */
     REALLYRIGHTARROW, /* '>>' */
-    PIPE              /* '|' */
+    PIPE,             /* '|' */
+    ERRORRIGHTARROW   /* 2> */
 } tokenType;
 
 typedef struct token

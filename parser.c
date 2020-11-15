@@ -7,7 +7,7 @@ token *tokensCheckNextElement();
 void tokensSkipElement();
 
 static job *parseJob();
-static process *parseProcess(char **infile, char **outfile, char **appfile);
+static process *parseProcess(char **infile, char **outfile, char **appfile, char **errfile);
 
 int isControlSymbol(char c)
 {
@@ -79,7 +79,7 @@ int parseline(char *line)
 */
 static job *parseJob()
 {
-    char *infile = 0, *outfile = 0, *appfile = 0;
+    char *infile = 0, *outfile = 0, *appfile = 0, *errfile = 0;
     job *j = (job *)malloc(sizeof(job));
     j->next = 0;
     j->stdin = STDIN_FILENO;
@@ -112,7 +112,7 @@ static job *parseJob()
                     return 0;
                 }
                 // currentProcess->next = parseProcess(0, &outfile, &appfile);
-                if((currentProcess->next = parseProcess(&infile, &outfile, &appfile)) == 0) {
+                if((currentProcess->next = parseProcess(&infile, &outfile, &appfile, &errfile)) == 0) {
                     return 0;
                 }
                 currentProcess = currentProcess->next;
@@ -125,7 +125,7 @@ static job *parseJob()
             break;
         default:
             /* это первый процесс */
-            if((currentProcess = j->first_process = parseProcess(&infile, &outfile, &appfile)) == 0) {
+            if((currentProcess = j->first_process = parseProcess(&infile, &outfile, &appfile, &errfile)) == 0) {
                 return 0;
             }
             if (strcmp(j->first_process->argv[0], "jobs") == 0 ||
@@ -164,16 +164,24 @@ static job *parseJob()
             exit(1);
         }
     }
+    if(errfile)
+    {
+        if ((j->stderr = open(errfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
+        {
+            perror(errfile);
+            exit(1);
+        }
+    }
     return j;
 }
 
 /**
  * ожидаемый вход: "arg0 arg1 ... argn [<,>,>>]"
  * если infile != 0, туда нужно положить <
- * аналогично для outfile, appfile.
+ * аналогично для outfile, appfile, errfile.
  * если аргумент 0, но встречается перенаправление его типа - syntax error
 */
-static process *parseProcess(char **infile, char **outfile, char **appfile)
+static process *parseProcess(char **infile, char **outfile, char **appfile, char **errfile)
 {
     process *p = (process *)malloc(sizeof(process));
     p->nargs = 0;
@@ -196,6 +204,17 @@ static process *parseProcess(char **infile, char **outfile, char **appfile)
                 return 0;
             }
             *appfile = t->place;
+            break;
+        case ERRORRIGHTARROW:
+            /* errfile */
+            tokensSkipElement();
+            t = tokensGetNextElement();
+            if (!t || t->type != WORD)
+            {
+                fprintf(stderr, "after 2> should be filename\n");
+                return 0;
+            }
+            *errfile = t->place;
             break;
         case RIGHTARROW:
             /* outfile */

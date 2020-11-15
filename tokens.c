@@ -54,6 +54,15 @@ int initTokensTable(char *line)
             tokensTable[tokensNum++].type = PIPE;
             *s++ = 0;
             break;
+        case '2':
+            /* если за двойкой не следует стрелка, это обычный аргумент */
+            if (*(s + 1) == '>')
+            {
+                tokensTable[tokensNum++].type = ERRORRIGHTARROW;
+                *s = *(s + 1) = 0;
+                s += 2;
+            }
+            break;
         default:
             /* это случай WORD */
             tokensTable[tokensNum].place = s;
