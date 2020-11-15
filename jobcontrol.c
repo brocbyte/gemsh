@@ -161,11 +161,15 @@ void put_job_in_foreground(job *j, int cont)
     /* Send the job a continue signal, if necessary.  */
     if (cont)
     {
+        tcsetattr (STDIN_FILENO, TCSADRAIN, &j->tmodes);
         if (kill(-j->pgid, SIGCONT) < 0)
             perror("kill (SIGCONT)");
     }
     wait_for_job(j);
     tcsetpgrp(STDIN_FILENO, shell_pgid);
+
+    tcgetattr(STDIN_FILENO, &j->tmodes);
+    tcsetattr(STDIN_FILENO, TCSADRAIN, &shell_tmodes);
 }
 void put_job_in_background(job *j, int cont)
 {

@@ -70,3 +70,5 @@ int parseline(char *);
 int promptline(char *, char *, int);
 
 void launch_job(job *j);
+
+extern struct termios shell_tmodes;

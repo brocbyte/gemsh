@@ -3,6 +3,7 @@
 void jobs_info();
 void fg_builtin(process *p);
 void bg_builtin(process *p);
+// clear ; ls | grep shell
 
 void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile, int foreground)
 {
@@ -18,6 +19,15 @@ void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile
     /* назначем потомку группу из потомка (так же делаем и в шелле, чтобы избежать гонок) */
     setpgid(pid, pgid);
 
+
+    if (foreground)
+    {
+        /* выводим процесс на передний план */
+        if (tcsetpgrp(STDIN_FILENO, pgid) == -1)
+            perror("tsetpgrp err");
+        
+    }
+    
     /* восстанавливаем стандартные реакции на сигналы (т.к. мы наследовались от шелла) */
     signal(SIGINT, SIG_DFL);
     signal(SIGQUIT, SIG_DFL);
@@ -25,79 +35,40 @@ void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile
     signal(SIGTTIN, SIG_DFL);
     signal(SIGTTOU, SIG_DFL);
 
-    if (foreground)
-    {
-        /* выводим процесс на передний план */
-        tcsetpgrp(STDIN_FILENO, pgid);
-    }
-    /* else
-    {
-        если фоновый, надо предохранить от SIGINT,SIGQUIT 
-        signal(SIGINT, SIG_IGN);
-        signal(SIGQUIT, SIG_IGN);
-    } */
-
-    /* int infileno, outfileno;
-    if (infile)
-    {
-        if ((infileno = open(infile, O_RDONLY)) == -1)
-        {
-            perror(infile);
-            exit(1);
-        }
-        if (dup2(infileno, STDIN_FILENO) == -1)
-        {
-            perror("dup2");
-            exit(1);
-        }
-        close(infileno);
-    }
-    if (outfile)
-    {
-        if ((outfileno = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
-        {
-            perror(outfile);
-            exit(1);
-        }
-        if (dup2(outfileno, STDOUT_FILENO) == -1)
-        {
-            perror("dup2");
-            exit(1);
-        }
-        close(outfileno);
-    }
-    if (appfile)
-    {
-        if ((outfileno = open(appfile, O_CREAT | O_APPEND | O_WRONLY, 0644)) == -1)
-        {
-            perror(appfile);
-            exit(1);
-        }
-        if (dup2(outfileno, STDOUT_FILENO) == -1)
-        {
-            perror("dup2");
-            exit(1);
-        }
-        close(outfileno);
-    } */
-
-    /* открываем файлы для перенаправления */
+    /* перенаправления */
     if (infile != STDIN_FILENO)
     {
-        dup2(infile, STDIN_FILENO);
-        close(infile);
+        if (dup2(infile, STDIN_FILENO) == -1)
+        {
+            perror("Dup infile");
+        }
+        if (close(infile) == -1)
+        {
+            perror("Close infile");
+        }
     }
     if (outfile != STDOUT_FILENO)
     {
-        dup2(outfile, STDOUT_FILENO);
-        close(outfile);
+        if (dup2(outfile, STDOUT_FILENO) == -1)
+        {
+            perror("Dup outfile");
+        }
+        if (close(outfile) == -1)
+        {
+            perror("Close outfile");
+        }
     }
     if (errfile != STDERR_FILENO)
     {
-        dup2(errfile, STDERR_FILENO);
-        close(errfile);
+        if (dup2(errfile, STDERR_FILENO) == -1)
+        {
+            perror("Dup errfile");
+        }
+        if (close(errfile) == -1)
+        {
+            perror("Close errfile");
+        }
     }
-
     /* наконец, зовем exec по аргументам p->argv */
     execvp(p->argv[0], p->argv);
     perror(p->argv[0]);
@@ -196,8 +167,4 @@ void launch_job(job *j)
         printf("launched: %d\n", j->pgid);
         put_job_in_background(j, 0);
     }
-    /*В этой реализации мы ждем все процессы. 
-    * Поэтому к этому моменту мы уверены, что все процессы завершены.
-    * По-хорошему надо будет смотреть, какие задания завершены, чистить за ними структуры процессов + структуры заданий.
-    */
 }

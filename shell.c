@@ -4,6 +4,7 @@ job *first_job = NULL;
 
 pid_t shell_pgid;
 void jobs_info(job *j);
+struct termios shell_tmodes;
 int main()
 {
     shell_pgid = getpgrp();
@@ -20,12 +21,14 @@ int main()
 
     char tmp_line[MAXLINELEN];
     sprintf(prompt, "<> ");
-
+    /* сохраняем tmodes для шелла */
+    tcgetattr (STDIN_FILENO, &shell_tmodes);
     while (promptline(prompt, tmp_line, sizeof(tmp_line)) > 0)
     {
         update_status();
         strncpy(line, tmp_line, sizeof(line));
-        if ((njobs = parseline(line)) <= 0){
+        if ((njobs = parseline(line)) <= 0)
+        {
             do_job_notification();
             continue;
         }
