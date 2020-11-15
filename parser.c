@@ -82,9 +82,9 @@ static job *parseJob()
     char *infile = 0, *outfile = 0, *appfile = 0, *errfile = 0;
     job *j = (job *)malloc(sizeof(job));
     j->next = 0;
-    j->stdin = STDIN_FILENO;
-    j->stdout = STDOUT_FILENO;
-    j->stderr = STDERR_FILENO;
+    j->stdinno = STDIN_FILENO;
+    j->stdoutno = STDOUT_FILENO;
+    j->stderrno = STDERR_FILENO;
     j->foreground = 1;
     j->pgid = 0;
     j->launched = 0;
@@ -142,7 +142,7 @@ static job *parseJob()
        по контракту мы договорились хранить в задании ручки файлов. */
     if (infile)
     {
-        if ((j->stdin = open(infile, O_RDONLY)) == -1)
+        if ((j->stdinno = open(infile, O_RDONLY)) == -1)
         {
             perror(infile);
             exit(1);
@@ -150,7 +150,7 @@ static job *parseJob()
     }
     if (outfile)
     {
-        if ((j->stdout = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
+        if ((j->stdoutno = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
         {
             perror(outfile);
             exit(1);
@@ -158,7 +158,7 @@ static job *parseJob()
     }
     else if (appfile)
     {
-        if ((j->stdout = open(appfile, O_CREAT | O_APPEND | O_WRONLY, 0644)) == -1)
+        if ((j->stdoutno = open(appfile, O_CREAT | O_APPEND | O_WRONLY, 0644)) == -1)
         {
             perror(appfile);
             exit(1);
@@ -166,7 +166,7 @@ static job *parseJob()
     }
     if(errfile)
     {
-        if ((j->stderr = open(errfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
+        if ((j->stderrno = open(errfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
         {
             perror(errfile);
             exit(1);

@@ -81,7 +81,7 @@ void launch_job(job *j)
     int mypipe[2], infile, outfile;
     //char *infile, *outfile, *appfile;
     /* назначить вход для первой команды в пайпе */
-    infile = j->stdin;
+    infile = j->stdinno;
     for (p = j->first_process; p; p = p->next)
     {
         if (strcmp(p->argv[0], "jobs") == 0)
@@ -114,7 +114,7 @@ void launch_job(job *j)
         }
         else
         {
-            outfile = j->stdout;
+            outfile = j->stdoutno;
         }
 
         pid = fork();
@@ -127,7 +127,7 @@ void launch_job(job *j)
         else if (pid == 0)
         {
             /* child process */
-            launch_process(p, j->pgid, infile, outfile, j->stderr, j->foreground);
+            launch_process(p, j->pgid, infile, outfile, j->stderrno, j->foreground);
         }
         else
         {
@@ -141,19 +141,19 @@ void launch_job(job *j)
             setpgid(pid, j->pgid);
         }
         /* Clean up after pipes.  */
-        if (infile != j->stdin)
+        if (infile != j->stdinno)
             close(infile);
-        if (outfile != j->stdout)
+        if (outfile != j->stdoutno)
             close(outfile);
         infile = mypipe[0];
     }
     /* кажется надо почистить открытые шеллом файлы */
-    if (j->stdin != STDIN_FILENO)
-        close(j->stdin);
-    if (j->stdout != STDOUT_FILENO)
-        close(j->stdout);
-    if (j->stderr != STDERR_FILENO)
-        close(j->stderr);
+    if (j->stdinno != STDIN_FILENO)
+        close(j->stdinno);
+    if (j->stdoutno != STDOUT_FILENO)
+        close(j->stdoutno);
+    if (j->stderrno != STDERR_FILENO)
+        close(j->stderrno);
 
     j->launched = 1;
     if (j->foreground)
