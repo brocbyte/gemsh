@@ -54,11 +54,15 @@ int parseline(char *line)
         default:
             if (!currentJob)
             {
-                first_job = currentJob = parseJob();
+                if((first_job = currentJob = parseJob()) == 0){
+                    return 0;
+                }
             }
             else
             {
-                currentJob->next = parseJob();
+                if((currentJob->next = parseJob()) == 0){
+                    return 0;
+                }
                 currentJob = currentJob->next;
             }
             break;
@@ -97,29 +101,33 @@ static job *parseJob()
         switch (t->type)
         {
         case PIPE:
-            if (currentProcess)
+            tokensSkipElement();
+            if (currentProcess && !j->builtin)
             {
                 /* переходим по трубе, процесс слева уже был */
-                tokensSkipElement();
                 /* справа от пайпа обязательно должен быть другой процесс */
                 if (!(!tokensIsEmpty() && t->type != AMPERSAND && t->type != SEMICOLON))
                 {
                     fprintf(stderr, "syntax error\n");
-                    return j;
+                    return 0;
                 }
                 // currentProcess->next = parseProcess(0, &outfile, &appfile);
-                currentProcess->next = parseProcess(&infile, &outfile, &appfile);
+                if((currentProcess->next = parseProcess(&infile, &outfile, &appfile)) == 0) {
+                    return 0;
+                }
                 currentProcess = currentProcess->next;
             }
             else
             {
                 fprintf(stderr, "syntax error\n");
-                return j;
+                return 0;
             }
             break;
         default:
             /* это первый процесс */
-            currentProcess = j->first_process = parseProcess(&infile, &outfile, &appfile);
+            if((currentProcess = j->first_process = parseProcess(&infile, &outfile, &appfile)) == 0) {
+                return 0;
+            }
             if (strcmp(j->first_process->argv[0], "jobs") == 0 ||
                 strcmp(j->first_process->argv[0], "fg") == 0 ||
                 strcmp(j->first_process->argv[0], "bg") == 0)

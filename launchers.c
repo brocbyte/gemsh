@@ -19,15 +19,13 @@ void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile
     /* назначем потомку группу из потомка (так же делаем и в шелле, чтобы избежать гонок) */
     setpgid(pid, pgid);
 
-
     if (foreground)
     {
         /* выводим процесс на передний план */
         if (tcsetpgrp(STDIN_FILENO, pgid) == -1)
             perror("tsetpgrp err");
-        
     }
-    
+
     /* восстанавливаем стандартные реакции на сигналы (т.к. мы наследовались от шелла) */
     signal(SIGINT, SIG_DFL);
     signal(SIGQUIT, SIG_DFL);
