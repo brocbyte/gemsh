@@ -61,8 +61,8 @@ int initTokensTable(char *line)
                 tokensTable[tokensNum++].type = ERRORRIGHTARROW;
                 *s = *(s + 1) = 0;
                 s += 2;
+                break;
             }
-            break;
         default:
             /* это случай WORD */
             tokensTable[tokensNum].place = s;
