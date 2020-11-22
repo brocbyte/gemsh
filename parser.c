@@ -130,7 +130,8 @@ static job *parseJob()
             }
             if (strcmp(j->first_process->argv[0], "jobs") == 0 ||
                 strcmp(j->first_process->argv[0], "fg") == 0 ||
-                strcmp(j->first_process->argv[0], "bg") == 0)
+                strcmp(j->first_process->argv[0], "bg") == 0 ||
+                strcmp(j->first_process->argv[0], "cd") == 0)
             {
                 j->builtin = 1;
             }

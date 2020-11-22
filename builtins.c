@@ -133,3 +133,15 @@ void bg_builtin(process *p)
         fprintf(stderr, "no such job\n");
     }
 }
+
+void cd_builtin(process *p)
+{
+    if(p->argv[1] == 0){
+        fprintf(stderr, "cd w/o args is not allowed :(\n");
+        return;
+    }
+    if (chdir(p->argv[1]) == -1)
+    {
+        perror("chdir");
+    }
+}

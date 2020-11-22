@@ -31,3 +31,6 @@ date ; man man ; jobs ; date &
 sleep 10 ; bg ; sleep 100 & date
 man man ; bg ; date & man man
 man man ; jobs ; sleep 100 & fg
+
+
+ps -o pid,ppid,pgrp,sid,tpgid,comm

@@ -26,3 +26,8 @@ cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
 cat < meow.txt > tmp.txt ; cat < tmp.txt >> meow.txt;\
 wc --lines meow.txt > cat.txt ; echo Number of cats: ;\
 cat cat.txt ; rm cat.txt ; rm tmp.txt
+
+
+
+sort < shell.c & ls >> 1.txt
+sort < shell.c & ls > 1.txt

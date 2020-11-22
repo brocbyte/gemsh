@@ -3,6 +3,7 @@
 void jobs_info();
 void fg_builtin(process *p);
 void bg_builtin(process *p);
+void cd_builtin(process *p);
 // clear ; ls | grep shell
 
 void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile, int foreground)
@@ -99,6 +100,12 @@ void launch_job(job *j)
         if (strcmp(p->argv[0], "bg") == 0)
         {
             bg_builtin(p);
+            p->completed = 1;
+            return;
+        }
+        if (strcmp(p->argv[0], "cd") == 0)
+        {
+            cd_builtin(p);
             p->completed = 1;
             return;
         }

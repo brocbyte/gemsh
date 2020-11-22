@@ -1,3 +1,5 @@
+#ifndef SHELL_HEADER
+#define SHELL_HEADER
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
@@ -73,3 +75,5 @@ int promptline(char *, char *, int);
 void launch_job(job *j);
 
 extern struct termios shell_tmodes;
+
+#endif
