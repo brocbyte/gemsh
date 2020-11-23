@@ -167,7 +167,7 @@ static job *parseJob()
     }
     if(errfile)
     {
-        if ((j->stderrno = open(errfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
+        if ((j->stderrno = open(errfile, O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0644)) == -1)
         {
             perror(errfile);
             exit(1);

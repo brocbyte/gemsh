@@ -146,6 +146,7 @@ void launch_job(job *j)
             }
             if (outfile != mypipe[1] && outfile != j->stdoutno && pipesUsed)
             {
+                /* зайдем ли мы сюда когда-нибудь?.. */
                 if (close(mypipe[1]) == -1)
                 {
                     perror("outfile");
