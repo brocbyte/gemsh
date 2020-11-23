@@ -143,7 +143,7 @@ static job *parseJob()
        по контракту мы договорились хранить в задании ручки файлов. */
     if (infile)
     {
-        if ((j->stdinno = open(infile, O_RDONLY)) == -1)
+        if ((j->stdinno = open(infile, O_RDONLY | O_CLOEXEC)) == -1)
         {
             perror(infile);
             exit(1);
@@ -151,7 +151,7 @@ static job *parseJob()
     }
     if (outfile)
     {
-        if ((j->stdoutno = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
+        if ((j->stdoutno = open(outfile, O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0644)) == -1)
         {
             perror(outfile);
             exit(1);
@@ -159,7 +159,7 @@ static job *parseJob()
     }
     else if (appfile)
     {
-        if ((j->stdoutno = open(appfile, O_CREAT | O_APPEND | O_WRONLY, 0644)) == -1)
+        if ((j->stdoutno = open(appfile, O_CREAT | O_APPEND | O_WRONLY | O_CLOEXEC, 0644)) == -1)
         {
             perror(appfile);
             exit(1);

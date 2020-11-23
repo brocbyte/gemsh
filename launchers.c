@@ -77,6 +77,7 @@ void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile
 
 void launch_job(job *j)
 {
+    int pipesUsed = 0;
     process *p;
     pid_t pid;
     int mypipe[2], infile, outfile;
@@ -112,11 +113,13 @@ void launch_job(job *j)
         /* назначить выход для последней команды в пайпе */
         if (p->next)
         {
+            /* ответственность! */
             if (pipe(mypipe) < 0)
             {
                 perror("pipe");
                 exit(1);
             }
+            pipesUsed = 1;
             outfile = mypipe[1];
         }
         else
@@ -134,6 +137,20 @@ void launch_job(job *j)
         else if (pid == 0)
         {
             /* child process */
+            if (infile != mypipe[0] && pipesUsed)
+            {
+                if (close(mypipe[0]) == -1)
+                {
+                    perror("infile");
+                }
+            }
+            if (outfile != mypipe[1] && outfile != j->stdoutno && pipesUsed)
+            {
+                if (close(mypipe[1]) == -1)
+                {
+                    perror("outfile");
+                }
+            }
             launch_process(p, j->pgid, infile, outfile, j->stderrno, j->foreground);
         }
         else
