@@ -17,11 +17,12 @@ void mark_job_as_running(job *j)
 
 void continue_job(job *j, int foreground)
 {
+    int stopped = job_is_stopped(j);
     mark_job_as_running(j);
     if (foreground)
-        put_job_in_foreground(j, 1);
+        put_job_in_foreground(j, stopped);
     else
-        put_job_in_background(j, 1);
+        put_job_in_background(j, stopped);
 }
 
 void jobs_info()

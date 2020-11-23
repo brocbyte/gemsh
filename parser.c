@@ -91,7 +91,7 @@ static job *parseJob()
     j->notified = 0;
     j->command = 0;
     j->builtin = 0;
-    /* tmodes??? */
+    //j->tmodesSaved = 0;
     process *currentProcess = j->first_process = 0;
 
     token *t = tokensCheckNextElement();

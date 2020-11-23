@@ -14,7 +14,6 @@ int main()
     signal(SIGTSTP, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
     signal(SIGTTOU, SIG_IGN);
-
     char line[MAXLINELEN]; /*  allow large command lines  */
     int njobs;
     char prompt[50]; // строка-приглашение на ввод

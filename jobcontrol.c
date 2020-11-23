@@ -63,7 +63,6 @@ void wait_for_job(job *j)
     {
         pid = waitpid(-j->pgid, &status, WUNTRACED);
     } while (!mark_process_status(pid, status) && !job_is_stopped(j) && !job_is_completed(j));
-    //fprintf(stderr, "%d: p->stopped: %d, p->completed: %d\n", j->pgid, j->first_process->stopped, j->first_process->completed);
     if (job_is_stopped(j) && !job_is_completed(j))
     {
         fprintf(stderr, "\n[%d]: stopped\n", j->pgid);
@@ -156,7 +155,6 @@ void free_job(job *j)
 void put_job_in_foreground(job *j, int cont)
 {
     j->foreground = 1;
-    /* cont - для job control */
     tcsetpgrp(STDIN_FILENO, j->pgid);
     /* Send the job a continue signal, if necessary.  */
     if (cont)
