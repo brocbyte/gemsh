@@ -6,7 +6,7 @@ void bg_builtin(process *p);
 void cd_builtin(process *p);
 // clear ; ls | grep shell
 
-void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile, int foreground)
+void launch_process(process *p, pid_t pgid, int infile, int outfile, int foreground)
 {
     /* устанавливаем процессу группу
      * если переданное pgid == 0, значит мы запускаем первый процесс в задании => для него pgid равен его pid'у 
@@ -57,13 +57,13 @@ void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile
             perror("Close outfile");
         }
     }
-    if (errfile != STDERR_FILENO)
+    if (p->stderrno != STDERR_FILENO)
     {
-        if (dup2(errfile, STDERR_FILENO) == -1)
+        if (dup2(p->stderrno, STDERR_FILENO) == -1)
         {
             perror("Dup errfile");
         }
-        if (close(errfile) == -1)
+        if (close(p->stderrno) == -1)
         {
             perror("Close errfile");
         }
@@ -152,7 +152,7 @@ void launch_job(job *j)
                     perror("outfile");
                 }
             }
-            launch_process(p, j->pgid, infile, outfile, j->stderrno, j->foreground);
+            launch_process(p, j->pgid, infile, outfile, j->foreground);
         }
         else
         {
@@ -170,6 +170,8 @@ void launch_job(job *j)
             close(infile);
         if (outfile != j->stdoutno)
             close(outfile);
+        if (p->stderrno != STDERR_FILENO)
+            close(p->stderrno);
         infile = mypipe[0];
     }
     /* кажется надо почистить открытые шеллом файлы */
@@ -177,8 +179,6 @@ void launch_job(job *j)
         close(j->stdinno);
     if (j->stdoutno != STDOUT_FILENO)
         close(j->stdoutno);
-    if (j->stderrno != STDERR_FILENO)
-        close(j->stderrno);
 
     j->launched = 1;
     if (j->foreground)
@@ -187,7 +187,7 @@ void launch_job(job *j)
     }
     else
     {
-        printf("launched: %d\n", j->pgid);
+        printf("[%d]\n", j->pgid);
         put_job_in_background(j, 0);
     }
 }

@@ -28,6 +28,7 @@ typedef struct process
     char completed;      /* 1 if process has completed */
     char stopped;        /* 1 if process has stopped */
     int status;          /* reported status value */
+    int stderrno;
 } process;
 
 /* A job is a pipeline of processes.  */

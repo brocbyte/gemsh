@@ -7,7 +7,7 @@ token *tokensCheckNextElement();
 void tokensSkipElement();
 
 static job *parseJob();
-static process *parseProcess(char **infile, char **outfile, char **appfile, char **errfile);
+static process *parseProcess(char **infile, char **outfile, char **appfile);
 
 int isControlSymbol(char c)
 {
@@ -79,19 +79,17 @@ int parseline(char *line)
 */
 static job *parseJob()
 {
-    char *infile = 0, *outfile = 0, *appfile = 0, *errfile = 0;
+    char *infile = 0, *outfile = 0, *appfile = 0;
     job *j = (job *)malloc(sizeof(job));
     j->next = 0;
     j->stdinno = STDIN_FILENO;
     j->stdoutno = STDOUT_FILENO;
-    j->stderrno = STDERR_FILENO;
     j->foreground = 1;
     j->pgid = 0;
     j->launched = 0;
     j->notified = 0;
     j->command = 0;
     j->builtin = 0;
-    //j->tmodesSaved = 0;
     process *currentProcess = j->first_process = 0;
 
     token *t = tokensCheckNextElement();
@@ -111,8 +109,7 @@ static job *parseJob()
                     fprintf(stderr, "syntax error\n");
                     return 0;
                 }
-                // currentProcess->next = parseProcess(0, &outfile, &appfile);
-                if((currentProcess->next = parseProcess(&infile, &outfile, &appfile, &errfile)) == 0) {
+                if((currentProcess->next = parseProcess(&infile, &outfile, &appfile)) == 0) {
                     return 0;
                 }
                 currentProcess = currentProcess->next;
@@ -125,7 +122,7 @@ static job *parseJob()
             break;
         default:
             /* это первый процесс */
-            if((currentProcess = j->first_process = parseProcess(&infile, &outfile, &appfile, &errfile)) == 0) {
+            if((currentProcess = j->first_process = parseProcess(&infile, &outfile, &appfile)) == 0) {
                 return 0;
             }
             if (strcmp(j->first_process->argv[0], "jobs") == 0 ||
@@ -165,14 +162,6 @@ static job *parseJob()
             exit(1);
         }
     }
-    if(errfile)
-    {
-        if ((j->stderrno = open(errfile, O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0644)) == -1)
-        {
-            perror(errfile);
-            exit(1);
-        }
-    }
     return j;
 }
 
@@ -182,7 +171,7 @@ static job *parseJob()
  * аналогично для outfile, appfile, errfile.
  * если аргумент 0, но встречается перенаправление его типа - syntax error
 */
-static process *parseProcess(char **infile, char **outfile, char **appfile, char **errfile)
+static process *parseProcess(char **infile, char **outfile, char **appfile)
 {
     process *p = (process *)malloc(sizeof(process));
     p->nargs = 0;
@@ -190,6 +179,8 @@ static process *parseProcess(char **infile, char **outfile, char **appfile, char
     p->argv[0] = (char *)NULL;
     p->completed = 0;
     p->stopped = 0;
+    p->stderrno = STDERR_FILENO;
+    char * errfile = 0;
     token *t = tokensCheckNextElement();
     while (!tokensIsEmpty() && t->type != SEMICOLON && t->type != AMPERSAND && t->type != PIPE)
     {
@@ -215,7 +206,7 @@ static process *parseProcess(char **infile, char **outfile, char **appfile, char
                 fprintf(stderr, "after 2> should be filename\n");
                 return 0;
             }
-            *errfile = t->place;
+            errfile = t->place;
             break;
         case RIGHTARROW:
             /* outfile */
@@ -247,5 +238,15 @@ static process *parseProcess(char **infile, char **outfile, char **appfile, char
         }
         t = tokensCheckNextElement();
     }
+
+    if(errfile)
+    {
+        if ((p->stderrno = open(errfile, O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0644)) == -1)
+        {
+            perror(errfile);
+            exit(1);
+        }
+    }
+
     return p;
 }
