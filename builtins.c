@@ -1,4 +1,5 @@
 #include "shell.h"
+#include <procfs.h>
 int job_is_completed(job *j);
 int job_is_stopped(job *j);
 void put_job_in_foreground(job *j, int cont);
@@ -25,6 +26,22 @@ void continue_job(job *j, int foreground)
         put_job_in_background(j, stopped);
 }
 
+void extract_command(job * j, char * res){
+    char filename[1024];
+    int procinfofd;
+    sprintf(filename, "/proc/%d/psinfo", j->pgid);
+    if((procinfofd = open(filename, O_RDONLY)) == -1) {
+        perror(filename);
+        exit(1);
+    }
+    struct psinfo jobInfo;
+    if(read(procinfofd, &jobInfo, sizeof(jobInfo)) < 0){
+        perror("read");
+        exit(1);
+    }
+    strcpy(res, jobInfo.pr_fname);
+}
+
 void jobs_info()
 {
     job *j;
@@ -35,7 +52,9 @@ void jobs_info()
         printf("# [%d]: ", j->pgid);
         if (job_is_stopped(j) && !job_is_completed(j))
         {
-            printf("stopped\n");
+            char command[1024];
+            extract_command(j, command);
+            printf("%s stopped\n", command);
             j->notified = 1;
         }
         else if (!job_is_completed(j))
