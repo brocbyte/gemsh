@@ -26,25 +26,39 @@ void continue_job(job *j, int foreground)
         put_job_in_background(j, stopped);
 }
 
-void extract_command(job * j, char * res){
+void extract_command(job *j, char *res)
+{
     char filename[1024];
     int procinfofd;
-    sprintf(filename, "/proc/%d/psinfo", j->pgid);
-    if((procinfofd = open(filename, O_RDONLY)) == -1) {
-        perror(filename);
-        exit(1);
+    process *p;
+    struct psinfo procInfo;
+    *res = 0;
+    for (p = j->first_process; p; p = p->next)
+    {
+        sprintf(filename, "/proc/%d/psinfo", j->pgid);
+        if ((procinfofd = open(filename, O_RDONLY)) == -1)
+        {
+            perror(filename);
+            exit(1);
+        }
+        
+        if (read(procinfofd, &procInfo, sizeof(procInfo)) < 0)
+        {
+            perror("read");
+            exit(1);
+        }
+        close(procinfofd);
+        strcat(res, procInfo.pr_fname);
+        if(p->next){
+            strcat(res, " | ");
+        }
     }
-    struct psinfo jobInfo;
-    if(read(procinfofd, &jobInfo, sizeof(jobInfo)) < 0){
-        perror("read");
-        exit(1);
-    }
-    strcpy(res, jobInfo.pr_fname);
 }
 
 void jobs_info()
 {
     job *j;
+    char command[MAXLINELEN];
     for (j = first_job; j; j = j->next)
     {
         if (j->builtin || !j->launched)
@@ -52,13 +66,13 @@ void jobs_info()
         printf("# [%d]: ", j->pgid);
         if (job_is_stopped(j) && !job_is_completed(j))
         {
-            char command[1024];
             extract_command(j, command);
-            printf("%s stopped\n", command);
+            printf("stopped %s\n", command);
             j->notified = 1;
         }
         else if (!job_is_completed(j))
         {
+            extract_command(j, command);
             printf("active\n");
         }
         else
@@ -156,7 +170,8 @@ void bg_builtin(process *p)
 
 void cd_builtin(process *p)
 {
-    if(p->argv[1] == 0){
+    if (p->argv[1] == 0)
+    {
         fprintf(stderr, "cd w/o args is not allowed :(\n");
         return;
     }
