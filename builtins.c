@@ -35,21 +35,21 @@ void extract_command(job *j, char *res)
     *res = 0;
     for (p = j->first_process; p; p = p->next)
     {
-        sprintf(filename, "/proc/%d/psinfo", j->pgid);
+        sprintf(filename, "/proc/%d/psinfo", p->pid);
         if ((procinfofd = open(filename, O_RDONLY)) == -1)
         {
             perror(filename);
             exit(1);
         }
-        
         if (read(procinfofd, &procInfo, sizeof(procInfo)) < 0)
         {
             perror("read");
             exit(1);
         }
         close(procinfofd);
-        strcat(res, procInfo.pr_fname);
-        if(p->next){
+        strcat(res, procInfo.pr_psargs);
+        if (p->next)
+        {
             strcat(res, " | ");
         }
     }
@@ -73,7 +73,7 @@ void jobs_info()
         else if (!job_is_completed(j))
         {
             extract_command(j, command);
-            printf("active\n");
+            printf("active %s\n", command);
         }
         else
         {
