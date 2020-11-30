@@ -26,15 +26,14 @@ void continue_job(job *j, int foreground)
         put_job_in_background(j, stopped);
 }
 
-void extract_command(job *j, char *res)
+void print_command(job *j)
 {
-    char filename[1024];
     int procinfofd;
     process *p;
     struct psinfo procInfo;
-    *res = 0;
     for (p = j->first_process; p; p = p->next)
     {
+        char filename[64];
         sprintf(filename, "/proc/%d/psinfo", p->pid);
         if ((procinfofd = open(filename, O_RDONLY)) == -1)
         {
@@ -47,18 +46,17 @@ void extract_command(job *j, char *res)
             exit(1);
         }
         close(procinfofd);
-        strcat(res, procInfo.pr_psargs);
+        printf("%s", procInfo.pr_psargs);
         if (p->next)
-        {
-            strcat(res, " | ");
-        }
+            printf(" | ");
+        else
+            putchar('\n');
     }
 }
 
 void jobs_info()
 {
     job *j;
-    char command[MAXLINELEN];
     for (j = first_job; j; j = j->next)
     {
         if (j->builtin || !j->launched)
@@ -66,14 +64,14 @@ void jobs_info()
         printf("# [%d]: ", j->pgid);
         if (job_is_stopped(j) && !job_is_completed(j))
         {
-            extract_command(j, command);
-            printf("stopped %s\n", command);
+            printf("stopped ");
+            print_command(j);
             j->notified = 1;
         }
         else if (!job_is_completed(j))
         {
-            extract_command(j, command);
-            printf("active %s\n", command);
+            printf("active ");
+            print_command(j);
         }
         else
         {
